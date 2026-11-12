@@ -1,42 +1,23 @@
-// swift-tools-version:6.0
+// swift-tools-version:5.9
 // SPDX-License-Identifier: GPL-2.0-or-later
 import PackageDescription
 
-// No dependencies: everything the engine needs is in this repository (see CREDITS.md for what was adapted from where).
 let package = Package(
     name: "NovagramVoiceChangerKit",
-    platforms: [
-        .iOS(.v15),
-        .macOS(.v10_13)
-    ],
     products: [
-        .library(name: "NovagramVoiceChangerCore", targets: ["NovagramVoiceChangerCore"]),
-        .library(name: "NovagramVoiceChanger", targets: ["NovagramVoiceChanger"])
+        .library(name: "NovagramVoiceDSP", targets: ["NovagramVoiceDSP"]),
     ],
     targets: [
-        // The C++ engine behind the plain C API in include/nvc.h.
         .target(
-            name: "NovagramVoiceChangerCore",
-            path: "Sources/NovagramVoiceChangerCore"
+            name: "NovagramVoiceDSP",
+            path: "Sources/NovagramVoiceDSP",
+            publicHeadersPath: "include"
         ),
-        // Swift preset enum, params and a wrapper class.
-        .target(
-            name: "NovagramVoiceChanger",
-            dependencies: ["NovagramVoiceChangerCore"],
-            path: "Sources/NovagramVoiceChanger"
-        ),
-        // Renders every preset of an input WAV into samples/ for listening.
+        // `swift run NovagramVoiceDSPTests`: exits non-zero on a failure.
         .executableTarget(
-            name: "nvc-render",
-            dependencies: ["NovagramVoiceChanger"],
-            path: "Sources/nvc-render"
+            name: "NovagramVoiceDSPTests",
+            dependencies: ["NovagramVoiceDSP"],
+            path: "Tests"
         ),
-        .testTarget(
-            name: "NovagramVoiceChangerTests",
-            dependencies: ["NovagramVoiceChanger", "NovagramVoiceChangerCore"],
-            path: "Tests/NovagramVoiceChangerTests"
-        )
-    ],
-    swiftLanguageModes: [.v6],
-    cxxLanguageStandard: .cxx17
+    ]
 )

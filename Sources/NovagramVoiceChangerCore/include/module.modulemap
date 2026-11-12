@@ -1,4 +1,0 @@
-module NovagramVoiceChangerCore {
-    header "nvc.h"
-    export *
-}

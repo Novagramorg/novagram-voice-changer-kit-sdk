@@ -1,26 +1,27 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
-# The C++ engine and the plain C API (include/nvc.h, module NovagramVoiceChangerCore). No dependencies.
-# Built with -O2 even in debug builds: the spectral code is ~20x slower at -O0, too slow for a call's audio thread.
+# The voice changer DSP: plain C, no Telegram module and no Apple framework. Used by the Telegram-iOS recorder
+# (Swift) and call audio (TgVoipWebrtc). No external dependency: NovagramPitchShift.c is our trimmed copy of Sonic
+# (CREDITS.md).
 objc_library(
-    name = "NovagramVoiceChangerCore",
-    module_name = "NovagramVoiceChangerCore",
+    name = "NovagramVoiceDSP",
     enable_modules = True,
-    srcs = glob([
-        "Sources/NovagramVoiceChangerCore/*.cpp",
-        "Sources/NovagramVoiceChangerCore/*.hpp",
-        "Sources/NovagramVoiceChangerCore/spectral/*.hpp",
-    ]),
+    module_name = "NovagramVoiceDSP",
+    srcs = [
+        "Sources/NovagramVoiceDSP/NovagramVoiceDSP.c",
+        "Sources/NovagramVoiceDSP/NovagramPitchShift.c",
+        "Sources/NovagramVoiceDSP/NovagramPitchShift.h",
+    ],
     hdrs = [
-        "Sources/NovagramVoiceChangerCore/include/nvc.h",
+        "Sources/NovagramVoiceDSP/include/NovagramVoiceDSP/NovagramVoiceDSP.h",
     ],
     includes = [
-        "Sources/NovagramVoiceChangerCore/include",
+        "Sources/NovagramVoiceDSP/include",
     ],
     copts = [
-        "-std=c++17",
         "-O2",
     ],
     visibility = [
@@ -28,20 +29,30 @@ objc_library(
     ],
 )
 
-# The Swift preset enum, params and wrapper class.
-swift_library(
-    name = "NovagramVoiceChanger",
-    module_name = "NovagramVoiceChanger",
-    srcs = glob([
-        "Sources/NovagramVoiceChanger/**/*.swift",
-    ]),
-    copts = [
-        "-warnings-as-errors",
+# The same sources for the host test (a cc_test can't depend on an objc_library).
+cc_library(
+    name = "NovagramVoiceDSPHost",
+    srcs = [
+        "Sources/NovagramVoiceDSP/NovagramVoiceDSP.c",
+        "Sources/NovagramVoiceDSP/NovagramPitchShift.c",
+        "Sources/NovagramVoiceDSP/NovagramPitchShift.h",
+    ],
+    hdrs = [
+        "Sources/NovagramVoiceDSP/include/NovagramVoiceDSP/NovagramVoiceDSP.h",
+    ],
+    includes = [
+        "Sources/NovagramVoiceDSP/include",
+    ],
+)
+
+# Every preset runs, tape speeds change the length as expected, nothing clips, and the call path keeps each
+# buffer's size.
+cc_test(
+    name = "NovagramVoiceDSPTests",
+    srcs = [
+        "Tests/NovagramVoiceDSPTests.c",
     ],
     deps = [
-        ":NovagramVoiceChangerCore",
-    ],
-    visibility = [
-        "//visibility:public",
+        ":NovagramVoiceDSPHost",
     ],
 )
